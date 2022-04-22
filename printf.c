@@ -1,43 +1,50 @@
-#include "main.h"
+#include <stdarg.h>
+#include "holberton.h"
 /**
- * _printf - printf function
- * @format: const char pointer
- * Return: b_len
+ *_printf-Own Printf function
+ *@format: Int Value
+ *
+ *Return: Int value
  */
 int _printf(const char *format, ...)
 {
-	int (*pfunc)(va_list, flags_t *);
-	const char *p;
-	va_list arguments;
-	flags_t flags = {0, 0, 0};
+	va_list args;
+	int i = 0, j = 0, counter = 0;
 
-	register int count = 0;
-
-	va_start(arguments, format);
-	if (!format || (format[0] == '%' && !format[1]))
+	format_opt data_t[] = {
+		{"c", print_c}, {"s", print_s}, {"%", print_mod}, {"i", print_i},
+		{"d", print_d}, {"R", rot_13}, {"r", print_rev}, {"u", print_deci},
+		{"b", print_binary}, {"o", print_octal}, {"x", print_hexa},
+		{"X", print_hexa_UP}, {NULL, NULL}
+	};
+	va_start(args, format);
+	if (format == NULL)
 		return (-1);
-	if (format[0] == '%' && format[1] == ' ' && !format[2])
-		return (-1);
-	for (p = format; *p; p++)
+	for (i = 0; format && format[i]; i++)
 	{
-		if (*p == '%')
+		if (format[i] != '%')
 		{
-			p++;
-			if (*p == '%')
+			if (_putchar(format[i]) < 0)
+				return (-1);
+			counter++;
+			continue;
+		}
+		if (format[i + 1] == '\0')
+			return (-1);
+		for (j = 0; data_t[j].type; j++)
+		{
+			if (*data_t[j].type == format[i + 1])
 			{
-				count += _putchar('%');
-				continue;
+				counter += data_t[j].f(args);
+				break;
 			}
-			while (get_flag(*p, &flags))
-				p++;
-			pfunc = get_print(*p);
-			count += (pfunc)
-				? pfunc(arguments, &flags)
-				: _printf("%%%c", *p);
-		} else
-			count += _putchar(*p);
+		}
+		if (data_t[j].type == NULL)
+		{
+			if (_putchar(format[i]) < 0 || _putchar(format[i + 1]) < 0)
+				return (-1);
+			counter += 2; }
+		i++;
 	}
-	_putchar(-1);
-	va_end(arguments);
-	return (count);
-}
+	va_end(args);
+	return (counter);

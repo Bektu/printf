@@ -1,153 +1,100 @@
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 #include "main.h"
+/**
+ * print_format - format controller
+ * @format: the base string
+ * @valist : hold the argument passed
+ * Return: total size of the argument with the total size of the base string
+ */
+int print_format(const char *format, va_list valist)
+{
+	unsigned int count = 0;
+	int result;
+	int i = 0;
+
+	for (i = 0; format[i]; i++)
+	{
+		if (format[i] == '%')
+		{
+			result = formatchecker(format, valist, &i);
+			if (result == -1)
+			{
+				return (-1);
+			}
+		count += result;
+		continue;
+		}
+	print_out(format[i]);
+	count++;
+	}
+	return (count);
+}
 
 /**
-* _printf - prints an output according to a format
-* @format: The specified format
-*
-* Return: The number of characters that were printed
-*/
+ * formatchecker - checks the format and print the character
+ * @str: the base string
+ * @valist: number of arguments passed
+ * @j: address of %
+ * Return: total number of printed charcter inside the argument
+ */
+int formatchecker(const char *str, va_list valist, int *j)
+{
+	int i;
+	int p;
+	int formats;
+
+	Data checker[] = {{'c', print_char},
+			  {'s', print_string},
+			  {'d', print_int},
+			  {'i', print_int},
+			  {'b', print_binary},
+			  {'u', print_unsigned},
+			  {'o', print_octal},
+			  {'x', print_hex},
+			  {'X', print_hex_big},
+			  {'S', print_bigS},
+			  {'p', print_address},
+			  {'R', print_rot13},
+			  {'r', print_rev}};
+	*j = *j + 1;
+	if (str[*j] == '\0')
+	{
+		return (-1);
+	}
+	if (str[*j] == '%')
+	{
+		print_out('%');
+		return (1);
+	}
+	formats = sizeof(checker) / sizeof(checker[0]);
+	for (i = 0; i < formats; i++)
+	{
+		if (str[*j] == checker[i].l)
+		{
+			p = checker[i].ptr(valist);
+			return (p);
+		}
+	}
+	print_out('%'), print_out(str[*j]);
+	return (2);
+}
+
+/**
+ * _printf - prints anything
+ * @format: list of argument type passed
+ * Return: number of character printed
+ */
 int _printf(const char *format, ...)
 {
-int i = 0, tmp, processing_escape = FALSE, error = 1, last_token;
-fmt_info_t fmt_info;
-va_list args;
-if (!format || (format[0] == '%' && format[1] == '\0'))
-return (-1);
-va_start(args, format);
-write_to_buffer(0, -1);
-for (i = 0; format && *(format + i) != '\0'; i++)
-{
-if (processing_escape)
-{
-tmp = read_format_info(format + i, args, &fmt_info, &last_token);
-processing_escape = FALSE;
-set_format_error(format, &i, tmp, last_token, &error);
-if (is_specifier(fmt_info.spec))
-write_format(&args, &fmt_info);
-+= (is_specifier(fmt_info.spec) ? tmp : 0);
-}
-else
-{
-if (*(format + i) == '%')
-processing_escape = TRUE;
-else
-_putchar(*(format + i));
-}
-}
-write_to_buffer(0, 1);
-va_end(args);
-return (error <= 0 ? error : write_to_buffer('\0', -2));
-}
-/**
-* write_format - Writes data formatted against some parameters
-* @args_list: The arguments list
-*
-* @fmt_info: The format info parameters that were read
-*/
-void write_format(va_list *args_list, fmt_info_t *fmt_info)
-{
-int i;
-spec_printer_t spec_printers[] = {
-{'%', convert_fmt_percent},
-{'p', convert_fmt_p},
-{'c', convert_fmt_c},
-{'s', convert_fmt_s},
-{'d', convert_fmt_di},
-{'i', convert_fmt_di},
-{'X', convert_fmt_xX},
-{'x', convert_fmt_xX},
-{'o', convert_fmt_o},
-{'u', convert_fmt_u},
-/* #begin custom specifiers */
-{'b', convert_fmt_b},
-{'R', convert_fmt_R},
-{'r', convert_fmt_r},
-{'S', convert_fmt_S},
-/* #end */
-{'F', convert_fmt_fF},
-{'f', convert_fmt_fF},
-};
-for (i = 0; i < 23 && spec_printers[i].spec != '\0'; i++)
-{
-if (fmt_info->spec == spec_printers[i].spec)
-{
-spec_printers[i].print_arg(args_list, fmt_info);
-break;
-}
-}
-}
+	va_list ag;
+	int f;
 
-/**
-* _putstr - writes the given string
-* @str: The string to write
-*
-* Return: On success 1.
-* On error, -1 is returned, and errno is set appropriately.
-*/
-int _putstr(char *str)
-{	int i, out;
-for (i = 0; str && *(str + i) != 0; i++)
-out = _putchar(*(str + i));
-return (out);
-}
-
-/**
-* _putchar - writes the character c to
-* @c: The character 
-*
-* Return: On success 1.
-* On error, -1 is returned, and errno is set appropriately.
-*/
-int _putchar(char c)
-{
-return (write_to_buffer(c, 0));
-}
-
-/**
-* write_to_buffer - Writes a character to the buffer based on an action code
-* @c: The character to write
-* @action: The action to done (
-* -1-> reset the static variables
-* 0-> write char to buffer
-* 1-> don't write character to buffer but empty buffer onto stdout
-* -2-> the number of characters written to stdout)
-*
-* Return: On success 1.
-* On error, -1 is returned, and errno is set appropriately.
-*/
-int write_to_buffer(char c, char action)
-{
-static int i;
-static int chars_count;
-static char buffer[1024];
-static char out;
-if (i < 1024 && action == 0)
-{
-out = chars_count < 1 ? 1 : out;
-buffer[i] = c;
-i++;
-chars_count++;
-}
-if (i >= 1024 || action == 1)
-{
-out = write(1, buffer, i);
-i = 0;
-mem_set(buffer, 1024, 0);
-}
-if (action == -1)
-{
-i = 0;
-chars_count = 0;
-mem_set(buffer, 1024, 0);
-}
-if (action == -2)
-{
-return (chars_count);
-}
-return (out);
+	if (format == NULL)
+	{
+		return (-1);
+	}
+	va_start(ag, format);
+	f = print_format(format, ag);
+	print_out(-1);
+	va_end(ag);
+	return (f);
 }
